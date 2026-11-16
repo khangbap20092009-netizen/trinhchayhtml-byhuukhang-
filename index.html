@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Chạy HTML Trực Tiếp - by NGÔ HỮU KHANG (Hybrid)</title>
+    <title>Trình Chạy HTML Trực Tiếp - by NGÔ HỮU KHANG</title>
     <style>
         * {
             box-sizing: border-box;
@@ -38,6 +38,33 @@
             gap: 10px;
         }
         
+        /* Nhóm các nút công cụ */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tool-btn {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .tool-btn:hover { background-color: #475569; }
+        .tool-btn:active { transform: scale(0.95); }
+
+        .clear-btn { background-color: #ef4444; }
+        .clear-btn:hover { background-color: #dc2626; }
+
         .run-btn {
             background-color: #10b981;
             color: white;
@@ -155,7 +182,13 @@
 <body>
     <div class="header">
         <h1>🧑‍💻 Trình Soạn Thảo HTML (by NGÔ HỮU KHANG)</h1>
-        <button id="run-btn" class="run-btn">▶ RUN</button>
+        
+        <!-- Khu vực các nút bấm -->
+        <div class="btn-group">
+            <button id="paste-btn" class="tool-btn">📋 Dán</button>
+            <button id="clear-btn" class="tool-btn clear-btn">🗑️ Xóa</button>
+            <button id="run-btn" class="run-btn">▶ RUN</button>
+        </div>
     </div>
     
     <div class="container">
@@ -163,13 +196,11 @@
             <div class="pane-header">
                 <div class="dot dot-code"></div>
                 index.html
-                <!-- Hiển thị trạng thái mạng -->
                 <span id="status-indicator">Đang kiểm tra...</span>
             </div>
             
             <div id="editor-wrapper">
                 <div id="editor-container"></div>
-                <!-- Xóa chữ mờ khi offline -->
                 <textarea id="fallback-editor" spellcheck="false"></textarea>
             </div>
         </div>
@@ -188,7 +219,10 @@
         const editorContainer = document.getElementById('editor-container');
         const fallbackEditor = document.getElementById('fallback-editor');
         const previewWindow = document.getElementById('preview-window');
+        
         const runBtn = document.getElementById('run-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const pasteBtn = document.getElementById('paste-btn');
 
         let isOnlineMode = false;
         let monacoInstance = null;
@@ -241,9 +275,11 @@
             enableOfflineMode();
         }
 
+        // --- CÁC TÍNH NĂNG NÚT BẤM --- //
+
+        // 1. Nút Chạy Code
         function updatePreview() {
             let code = "";
-            
             if (isOnlineMode && monacoInstance) {
                 code = monacoInstance.getValue();
             } else {
@@ -255,9 +291,45 @@
             iframeDoc.write(code);
             iframeDoc.close();
         }
-
         runBtn.addEventListener('click', updatePreview);
 
+        // 2. Nút Xóa Tất Cả Code
+        clearBtn.addEventListener('click', () => {
+            if (confirm("Bạn có chắc chắn muốn xóa toàn bộ code không?")) {
+                if (isOnlineMode && monacoInstance) {
+                    monacoInstance.setValue(''); // Xóa code trong Monaco
+                } else {
+                    fallbackEditor.value = '';   // Xóa code trong Textarea
+                }
+                updatePreview(); // Làm trắng luôn khung kết quả
+            }
+        });
+
+        // 3. Nút Dán Code
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                // Lấy dữ liệu từ Clipboard của máy tính
+                const text = await navigator.clipboard.readText();
+                
+                if (isOnlineMode && monacoInstance) {
+                    // Chèn code vào ngay vị trí con trỏ chuột trong Monaco
+                    const selection = monacoInstance.getSelection();
+                    const op = {range: selection, text: text, forceMoveMarkers: true};
+                    monacoInstance.executeEdits("my-source", [op]);
+                } else {
+                    // Chèn code vào ngay vị trí con trỏ chuột trong Textarea offline
+                    const start = fallbackEditor.selectionStart;
+                    const end = fallbackEditor.selectionEnd;
+                    fallbackEditor.value = fallbackEditor.value.substring(0, start) + text + fallbackEditor.value.substring(end);
+                    // Đẩy con trỏ chuột ra sau đoạn code vừa dán
+                    fallbackEditor.selectionStart = fallbackEditor.selectionEnd = start + text.length;
+                }
+            } catch (err) {
+                alert("Lỗi: Trình duyệt của bạn không cho phép đọc Clipboard. Vui lòng cấp quyền hoặc bấm phím tắt Ctrl + V để dán!");
+            }
+        });
+
+        // Hỗ trợ phím tắt
         fallbackEditor.addEventListener('keydown', function(e) {
             if (e.key === 'Tab') {
                 e.preventDefault();
