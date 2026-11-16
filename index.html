@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Chạy HTML Trực Tiếp - by NGÔ HỮU KHANG</title>
+    <title>Trình Chạy HTML Trực Tiếp & AI - by NGÔ HỮU KHANG</title>
     <style>
         * {
             box-sizing: border-box;
@@ -38,7 +38,6 @@
             gap: 10px;
         }
         
-        /* Nhóm các nút công cụ */
         .btn-group {
             display: flex;
             gap: 10px;
@@ -62,6 +61,9 @@
         .tool-btn:hover { background-color: #475569; }
         .tool-btn:active { transform: scale(0.95); }
 
+        .ai-btn { background-color: #8b5cf6; }
+        .ai-btn:hover { background-color: #7c3aed; }
+        
         .clear-btn { background-color: #ef4444; }
         .clear-btn:hover { background-color: #dc2626; }
 
@@ -181,10 +183,10 @@
 </head>
 <body>
     <div class="header">
-        <h1>🧑‍💻 Trình Soạn Thảo HTML (by NGÔ HỮU KHANG)</h1>
+        <h1>🧑‍💻 Trình Soạn Thảo HTML & AI (by NGÔ HỮU KHANG)</h1>
         
-        <!-- Khu vực các nút bấm -->
         <div class="btn-group">
+            <button id="ai-toggle-btn" class="tool-btn ai-btn">✨ Alo Gemini</button>
             <button id="paste-btn" class="tool-btn">📋 Dán</button>
             <button id="clear-btn" class="tool-btn clear-btn">🗑️ Xóa</button>
             <button id="run-btn" class="run-btn">▶ RUN</button>
@@ -215,6 +217,7 @@
     </div>
 
     <script>
+        // --- 1. LOGIC TRÌNH SOẠN THẢO (CÓ MẠNG & MẤT MẠNG) ---
         const statusIndicator = document.getElementById('status-indicator');
         const editorContainer = document.getElementById('editor-container');
         const fallbackEditor = document.getElementById('fallback-editor');
@@ -223,6 +226,7 @@
         const runBtn = document.getElementById('run-btn');
         const clearBtn = document.getElementById('clear-btn');
         const pasteBtn = document.getElementById('paste-btn');
+        const aiToggleBtn = document.getElementById('ai-toggle-btn');
 
         let isOnlineMode = false;
         let monacoInstance = null;
@@ -242,7 +246,6 @@
             script.onload = function() {
                 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
                 require(['vs/editor/editor.main'], function() {
-                    
                     isOnlineMode = true;
                     statusIndicator.innerHTML = '🟢 Online';
                     statusIndicator.style.color = '#86efac'; 
@@ -261,11 +264,7 @@
                     });
                 });
             };
-            
-            script.onerror = function() {
-                enableOfflineMode();
-            };
-            
+            script.onerror = enableOfflineMode;
             document.body.appendChild(script);
         }
 
@@ -275,9 +274,9 @@
             enableOfflineMode();
         }
 
-        // --- CÁC TÍNH NĂNG NÚT BẤM --- //
+        // --- 2. CÁC TÍNH NĂNG NÚT BẤM ---
 
-        // 1. Nút Chạy Code
+        // Nút Chạy Code
         function updatePreview() {
             let code = "";
             if (isOnlineMode && monacoInstance) {
@@ -285,7 +284,6 @@
             } else {
                 code = fallbackEditor.value;
             }
-
             const iframeDoc = previewWindow.contentDocument || previewWindow.contentWindow.document;
             iframeDoc.open();
             iframeDoc.write(code);
@@ -293,35 +291,30 @@
         }
         runBtn.addEventListener('click', updatePreview);
 
-        // 2. Nút Xóa Tất Cả Code
+        // Nút Xóa Tất Cả Code
         clearBtn.addEventListener('click', () => {
             if (confirm("Bạn có chắc chắn muốn xóa toàn bộ code không?")) {
                 if (isOnlineMode && monacoInstance) {
-                    monacoInstance.setValue(''); // Xóa code trong Monaco
+                    monacoInstance.setValue(''); 
                 } else {
-                    fallbackEditor.value = '';   // Xóa code trong Textarea
+                    fallbackEditor.value = '';   
                 }
-                updatePreview(); // Làm trắng luôn khung kết quả
+                updatePreview(); 
             }
         });
 
-        // 3. Nút Dán Code
+        // Nút Dán Code
         pasteBtn.addEventListener('click', async () => {
             try {
-                // Lấy dữ liệu từ Clipboard của máy tính
                 const text = await navigator.clipboard.readText();
-                
                 if (isOnlineMode && monacoInstance) {
-                    // Chèn code vào ngay vị trí con trỏ chuột trong Monaco
                     const selection = monacoInstance.getSelection();
                     const op = {range: selection, text: text, forceMoveMarkers: true};
                     monacoInstance.executeEdits("my-source", [op]);
                 } else {
-                    // Chèn code vào ngay vị trí con trỏ chuột trong Textarea offline
                     const start = fallbackEditor.selectionStart;
                     const end = fallbackEditor.selectionEnd;
                     fallbackEditor.value = fallbackEditor.value.substring(0, start) + text + fallbackEditor.value.substring(end);
-                    // Đẩy con trỏ chuột ra sau đoạn code vừa dán
                     fallbackEditor.selectionStart = fallbackEditor.selectionEnd = start + text.length;
                 }
             } catch (err) {
@@ -329,7 +322,36 @@
             }
         });
 
-        // Hỗ trợ phím tắt
+        // --- 3. TÍNH NĂNG GỌI GEMINI (GIỮ LỊCH SỬ TUYỆT ĐỐI) ---
+        aiToggleBtn.addEventListener('click', () => {
+            const width = 450;
+            const height = 600;
+            const left = window.innerWidth - width - 20; 
+            const top = 100;
+            const features = `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`;
+            
+            // Dùng thủ thuật gọi lại tên cửa sổ 'GeminiChat' nhưng để trống đường link 
+            // để trình duyệt không load lại trang làm mất lịch sử
+            let popup = window.open('', 'GeminiChat', features);
+            
+            try {
+                // Nếu cửa sổ mới tinh chưa có web nào (about:blank), trình duyệt cho phép đọc link
+                if (popup.location.href === 'about:blank' || popup.location.href === '') {
+                    popup.location.href = 'https://gemini.google.com/app';
+                }
+            } catch (e) {
+                // Nếu trình duyệt chặn lại báo lỗi đỏ (Cross-origin), 
+                // nghĩa là trang Gemini đang chạy sẵn ở đó rồi. 
+                // Ta KHÔNG làm gì cả để giữ nguyên đoạn chat.
+            }
+            
+            // Ép cửa sổ đó nổi lên trên cùng màn hình
+            if (popup) {
+                popup.focus();
+            }
+        });
+
+        // Phím tắt bàn phím
         fallbackEditor.addEventListener('keydown', function(e) {
             if (e.key === 'Tab') {
                 e.preventDefault();
